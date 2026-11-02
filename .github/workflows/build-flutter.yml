@@ -135,6 +135,10 @@ jobs:
             echo '::error::Payload mode=url wajib memiliki url website.'
             exit 1
           fi
+          if [[ "$WEB_URL" != https://* && "$WEB_URL" != http://* ]]; then
+            echo '::error::URL website harus diawali http:// atau https://'
+            exit 1
+          fi
           python3 - "$APP_NAME" "$WEB_URL" <<'PY'
           import json, pathlib, re, sys
           app_name, web_url = sys.argv[1], sys.argv[2]
@@ -156,6 +160,7 @@ jobs:
           import 'package:flutter/material.dart';
           import 'package:flutter/services.dart';
           import 'package:webview_flutter/webview_flutter.dart';
+          import 'package:webview_flutter_android/webview_flutter_android.dart';
 
           const String appTitle = __APP_NAME__;
           const String startUrl = __WEB_URL__;
@@ -219,8 +224,15 @@ jobs:
                     }
                   },
                   onNavigationRequest: (request) => NavigationDecision.navigate,
-                ))
-                ..loadRequest(Uri.parse(startUrl));
+                ));
+
+              // Explicitly use normal HTTP cache behavior on Android WebView.
+              // This prevents stale/missing-cache navigation behavior on some devices.
+              final platformController = controller.platform;
+              if (platformController is AndroidWebViewController) {
+                platformController.setCacheMode(AndroidCacheMode.LOAD_DEFAULT);
+              }
+              controller.loadRequest(Uri.parse(startUrl));
             }
 
             @override
